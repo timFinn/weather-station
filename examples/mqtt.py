@@ -24,7 +24,7 @@ wind_spd_topic = "sensors/weather/wind_speed"
 rain_topic = "sensors/weather/rain"
 rain_total_topic = "sensors/weather/rain_total"
 
-mqtt_server = "10.0.0.65"  # Replace with the IP or URI of the MQTT server you use
+mqtt_server = "mqtt.timfinn.dev"  # Replace with the IP or URI of the MQTT server you use
 client_id = "weatherhat"
 
 
@@ -46,8 +46,8 @@ def on_message(client, userdata, msg):
 
 def host_avail(hostname):
     try:
-#        socket.gethostbyname(hostname)
-        socket.gethostbyaddr(hostname)
+        socket.gethostbyname(hostname)
+#        socket.gethostbyaddr(hostname)
         return True
     except OSError as exc:
         print(exc)
@@ -87,7 +87,7 @@ while not host_avail(mqtt_server):
 client = mqtt.Client(client_id=client_id)
 client.on_connect = on_connect
 client.on_message = on_message
-client.connect(host=mqtt_server)
+client.connect(host=mqtt_server, port=1883, keepalive=60)
 
 
 # Read the BME280 and discard the initial nonsense readings
