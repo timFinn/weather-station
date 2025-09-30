@@ -71,7 +71,7 @@ def restart_wifi():
 def check_connectivity():
     try:
         # Ping local router
-        subprocess.check_call(['ping', '-c', '1', 'dradis.timfinn.dev], 
+        subprocess.check_call(['ping', '-c', '1', 'dradis.timfinn.dev'], 
                             stdout=subprocess.DEVNULL)
         return True
     except subprocess.CalledProcessError:
