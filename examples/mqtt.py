@@ -88,6 +88,7 @@ client = mqtt.Client(client_id=client_id)
 client.on_connect = on_connect
 client.on_message = on_message
 client.connect(host=mqtt_server, port=1883, keepalive=60)
+client.loop_start()
 
 
 # Read the BME280 and discard the initial nonsense readings
