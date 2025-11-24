@@ -103,7 +103,8 @@ sleep(10.0)
 # Read all the sensors and start sending data
 
 while True:
-    if host_avail(mqtt_server):
+    #if host_avail(mqtt_server):
+    if client.is_connected():
         try:
             sensor.update(interval=2.0)
         except Exception as e:
@@ -137,4 +138,13 @@ while True:
 #            print('Data sent to broker')
         except Exception as e:
             print(e)
+    else:
+        print("MQTT disconnected, attempting reconnect...")
+        try:
+            client.reconnect()
+        except Exception as e:
+            print(f"Reconnect failed: {e}")
+        sleep(5)
+    
+    sleep(2.0)
 
