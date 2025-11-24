@@ -79,9 +79,9 @@ def check_connectivity():
 
 #   Main Loop
 
-while not host_avail(mqtt_server):
-    print("Waiting for mqtt")
-    sleep(2)
+# while not host_avail(mqtt_server):
+#     print("Waiting for mqtt")
+#     sleep(2)
 
 # Create an instance of the client.
 client = mqtt.Client(client_id=client_id)
