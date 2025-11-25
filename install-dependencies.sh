@@ -61,7 +61,7 @@ install_system_packages() {
     sudo apt-get install -y \
         i2c-tools \
         python3-lgpio \
-        libgpiod2 \
+        libgpiod3 \
         python3-libgpiod
     
     # Optional: fonts for display
