@@ -61,8 +61,13 @@ install_system_packages() {
     sudo apt-get install -y \
         i2c-tools \
         python3-lgpio \
-        libgpiod3 \
-        python3-libgpiod
+    
+    # Install correct libgpiod version (2 for older Bookworm, 3 for newer)
+    if apt-cache show libgpiod3 &>/dev/null; then
+        sudo apt-get install -y libgpiod3 python3-libgpiod
+    else
+        sudo apt-get install -y libgpiod2 python3-libgpiod
+    fi
     
     # Optional: fonts for display
     sudo apt-get install -y fonts-dejavu || warn "Font package not critical"
