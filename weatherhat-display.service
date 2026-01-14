@@ -1,0 +1,43 @@
+[Unit]
+Description=Weather HAT Display (Power Saving)
+Documentation=https://github.com/pimoroni/weatherhat-python
+After=weatherhat.service
+# Optional: start after main weather service
+
+[Service]
+Type=simple
+User=garden
+Group=garden
+
+# Working directory
+WorkingDirectory=/home/garden/weatherhat-python/examples
+
+# Environment setup
+Environment="PATH=/home/garden/.virtualenvs/pimoroni/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="VIRTUAL_ENV=/home/garden/.virtualenvs/pimoroni"
+Environment="TEMP_OFFSET=-7.5"
+Environment="DISPLAY_SLEEP_TIMEOUT=30"
+
+# Give hardware time to initialize
+ExecStartPre=/bin/sleep 5
+
+# Run the display script
+ExecStart=/home/garden/.virtualenvs/pimoroni/bin/python /home/garden/weatherhat-python/examples/display.py
+
+# Restart on failure
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=3
+StartLimitIntervalSec=300
+
+# Resource limits - display uses minimal resources when sleeping
+MemoryMax=128M
+CPUQuota=15%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=weatherhat-display
+
+[Install]
+WantedBy=multi-user.target
