@@ -271,7 +271,7 @@ main() {
     echo "  1. Reboot if this is a fresh install: sudo reboot"
     echo "  2. Test manually:"
     echo "     source ~/.virtualenvs/pimoroni/bin/activate"
-    echo "     python ~/weatherhat-python/examples/mqtt.py"
+    echo "     python ~/weatherhat-python/bin/mqtt-publisher.py"
     echo "  3. Install systemd service: sudo ./install-service.sh"
     echo ""
 }

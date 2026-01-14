@@ -10,7 +10,7 @@ User=garden
 Group=garden
 
 # Working directory
-WorkingDirectory=/home/garden/weatherhat-python/examples
+WorkingDirectory=/home/garden/weatherhat-python/bin
 
 # Environment setup
 Environment="PATH=/home/garden/.virtualenvs/pimoroni/bin:/usr/local/bin:/usr/bin:/bin"
@@ -22,7 +22,7 @@ Environment="DISPLAY_SLEEP_TIMEOUT=30"
 ExecStartPre=/bin/sleep 5
 
 # Run the display script
-ExecStart=/home/garden/.virtualenvs/pimoroni/bin/python /home/garden/weatherhat-python/examples/display.py
+ExecStart=/home/garden/.virtualenvs/pimoroni/bin/python /home/garden/weatherhat-python/bin/display-interface.py
 
 # Restart on failure
 Restart=on-failure

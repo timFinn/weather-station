@@ -138,9 +138,9 @@ show_commands() {
     echo "  sudo systemctl stop $SERVICE_NAME"
     echo ""
     echo "  # Test manually"
-    echo "  cd $PROJECT_ROOT/examples"
+    echo "  cd $PROJECT_ROOT/bin"
     echo "  source ~/.virtualenvs/pimoroni/bin/activate"
-    echo "  python3 display.py"
+    echo "  python3 display-interface.py"
     echo ""
     echo "Configuration:"
     echo "  Edit: /etc/systemd/system/$SERVICE_NAME.service"
@@ -149,7 +149,7 @@ show_commands() {
     echo "    - DISPLAY_SLEEP_TIMEOUT=30"
     echo ""
     echo "Documentation:"
-    echo "  See: $PROJECT_ROOT/examples/DISPLAY_README.md"
+    echo "  See: $PROJECT_ROOT/docs/DISPLAY_README.md"
     echo ""
 }
 

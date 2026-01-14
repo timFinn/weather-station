@@ -1,0 +1,5 @@
+# Ignore production environment files
+mqtt.env
+
+# Keep the example template
+!mqtt.env.example

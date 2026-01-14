@@ -9,9 +9,10 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 SOURCE_SERVICE="$PROJECT_ROOT/weatherhat.service"
-EXAMPLES_DIR="$PROJECT_ROOT/examples"
-ENV_EXAMPLE="$EXAMPLES_DIR/mqtt.env.example"
-ENV_FILE="$EXAMPLES_DIR/mqtt.env"
+CONFIG_DIR="$PROJECT_ROOT/config"
+BIN_DIR="$PROJECT_ROOT/bin"
+ENV_EXAMPLE="$CONFIG_DIR/mqtt.env.example"
+ENV_FILE="$CONFIG_DIR/mqtt.env"
 
 # Colors
 RED='\033[0;31m'
