@@ -1,0 +1,31 @@
+# Minimal pyproject.toml for production deployment
+# This is all you actually need for running weatherhat
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "weatherhat"
+version = "1.0.0"
+description = "Library for the Pimoroni Weather HAT"
+license = {file = "LICENSE"}
+requires-python = ">= 3.7"
+
+# Required runtime dependencies
+dependencies = [
+    "pimoroni-bme280 >= 1.0.0",
+    "ltr559 >= 1.0.0",
+    "pimoroni-ioexpander >= 1.0.1",
+    "st7789 >= 1.0.1",
+    "smbus2"
+]
+
+[tool.hatch.version]
+path = "weatherhat/__init__.py"
+
+[tool.hatch.build]
+include = [
+    "weatherhat/*.py",
+    "LICENSE"
+]
