@@ -51,6 +51,8 @@ class WeatherHAT:
         self._interrupt_pin = 4
         self._lock = threading.Lock()
         self._i2c_dev = SMBus(1)
+        self._polling = False  # Initialize before thread starts
+        self._poll_thread = None
 
         self._bme280 = BME280(i2c_dev=self._i2c_dev)
         self._ltr559 = LTR559(i2c_dev=self._i2c_dev)
@@ -110,21 +112,38 @@ class WeatherHAT:
 
         self.reset_counts()
 
-        self._poll_thread = threading.Thread(target=self._t_poll_ioexpander)
+        # Start polling thread
+        self._polling = True
+        self._poll_thread = threading.Thread(target=self._t_poll_ioexpander, daemon=True)
         self._poll_thread.start()
 
         self._ioe.enable_interrupt_out()
         self._ioe.clear_interrupt()
 
+    def close(self):
+        """Explicitly close and cleanup resources. Prefer this over relying on __del__."""
+        if self._polling:
+            self._polling = False
+            if self._poll_thread and self._poll_thread.is_alive():
+                self._poll_thread.join(timeout=2.0)
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.close()
+        return False
+
     def __del__(self):
-        self._polling = False
-        self._poll_thread.join()
+        """Cleanup on deletion - prefer using close() or context manager."""
+        self.close()
 
     def reset_counts(self):
-        self._lock.acquire(blocking=True)
-        self._ioe.clear_switch_counter(PIN_ANE2)
-        self._ioe.clear_switch_counter(PIN_R4)
-        self._lock.release()
+        with self._lock:
+            self._ioe.clear_switch_counter(PIN_ANE2)
+            self._ioe.clear_switch_counter(PIN_R4)
 
         self._wind_counts = 0
         self._rain_counts = 0
@@ -155,16 +174,17 @@ class WeatherHAT:
         return cardinal
 
     def _t_poll_ioexpander(self):
-        self._polling = True
+        """Polling thread for IO expander interrupts."""
         poll = select.poll()
         poll.register(self._int.fd, select.POLLIN)
         while self._polling:
-            if not poll.poll(10):
+            # Use blocking poll with timeout instead of tight loop
+            events = poll.poll(100)  # 100ms timeout
+            if not events:
                 continue
             for event in self._int.read_edge_events():
                 if event.line_offset == self._interrupt_pin:
                     self.handle_ioe_interrupt()
-            time.sleep(1.0 / 100)
 
     def update(self, interval=60.0):
 
@@ -174,23 +194,20 @@ class WeatherHAT:
         self.updated_wind_rain = False
 
         # Always update TPHL & Wind Direction
-        self._lock.acquire(blocking=True)
+        with self._lock:
+            self.device_temperature = self._bme280.get_temperature()
+            self.temperature = self.device_temperature + self.temperature_offset
 
-        self.device_temperature = self._bme280.get_temperature()
-        self.temperature = self.device_temperature + self.temperature_offset
+            self.pressure = self._bme280.get_pressure()
+            self.humidity = self._bme280.get_humidity()
 
-        self.pressure = self._bme280.get_pressure()
-        self.humidity = self._bme280.get_humidity()
+            self.relative_humidity = self.compensate_humidity(self.humidity, self.device_temperature, self.temperature)
 
-        self.relative_humidity = self.compensate_humidity(self.humidity, self.device_temperature, self.temperature)
+            self.dewpoint = self.get_dewpoint(self.humidity, self.device_temperature)
 
-        self.dewpoint = self.get_dewpoint(self.humidity, self.device_temperature)
+            self.lux = self._ltr559.get_lux()
 
-        self.lux = self._ltr559.get_lux()
-
-        self.wind_direction_raw = self._ioe.input(PIN_WV)
-
-        self._lock.release()
+            self.wind_direction_raw = self._ioe.input(PIN_WV)
 
         value, self.wind_direction = min(wind_direction_to_degrees.items(), key=lambda item: abs(item[0] - self.wind_direction_raw))
 
@@ -214,32 +231,28 @@ class WeatherHAT:
         self.rain = rain_hz * RAIN_MM_PER_TICK
 
     def handle_ioe_interrupt(self):
-        self._lock.acquire(blocking=True)
-        self._ioe.clear_interrupt()
+        with self._lock:
+            self._ioe.clear_interrupt()
 
-        wind_counts, _ = self._ioe.read_switch_counter(PIN_ANE2)
-        rain_counts, _ = self._ioe.read_switch_counter(PIN_R4)
+            wind_counts, _ = self._ioe.read_switch_counter(PIN_ANE2)
+            rain_counts, _ = self._ioe.read_switch_counter(PIN_R4)
 
-        # If the counter value is *less* than the previous value
-        # then we know the 7-bit switch counter overflowed
-        # We bump the count value by the lost counts between last_wind and 128
-        # since at 127 counts, one more count will overflow us back to 0
-        if wind_counts < self._last_wind_counts:
-            self._wind_counts += 128 - self._last_wind_counts
-            self._wind_counts += wind_counts
-        else:
-            self._wind_counts += wind_counts - self._last_wind_counts
+            # If the counter value is *less* than the previous value
+            # then we know the 7-bit switch counter overflowed
+            # We bump the count value by the lost counts between last_wind and 128
+            # since at 127 counts, one more count will overflow us back to 0
+            if wind_counts < self._last_wind_counts:
+                self._wind_counts += 128 - self._last_wind_counts
+                self._wind_counts += wind_counts
+            else:
+                self._wind_counts += wind_counts - self._last_wind_counts
 
-        self._last_wind_counts = wind_counts
+            self._last_wind_counts = wind_counts
 
-        if rain_counts < self._last_rain_counts:
-            self._rain_counts += 128 - self._last_rain_counts
-            self._rain_counts += rain_counts
-        else:
-            self._rain_counts += rain_counts - self._last_rain_counts
+            if rain_counts < self._last_rain_counts:
+                self._rain_counts += 128 - self._last_rain_counts
+                self._rain_counts += rain_counts
+            else:
+                self._rain_counts += rain_counts - self._last_rain_counts
 
-        self._last_rain_counts = rain_counts
-
-        # print(wind_counts, rain_counts, self._wind_counts, self._rain_counts)
-
-        self._lock.release()
+            self._last_rain_counts = rain_counts

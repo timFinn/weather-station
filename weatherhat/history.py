@@ -1,4 +1,5 @@
 import time
+from collections import deque
 
 wind_degrees_to_cardinal = {
     0: "North",
@@ -33,19 +34,21 @@ class HistoryEntry:
 
 class History:
     def __init__(self, history_depth=1200):
-        self._history = []
+        # Use deque with maxlen for O(1) append with automatic pruning
+        self._history = deque(maxlen=history_depth)
         self.history_depth = history_depth
 
     def append(self, value, timestamp=None):
+        # deque with maxlen automatically prunes oldest entry when full
         self._history.append(HistoryEntry(value, timestamp=timestamp))
-        self._history = self._history[-self.history_depth:]  # Prune the buffer
 
     def average(self, sample_over=None):
         history = self.history(sample_over)
         num_samples = len(history)
         if num_samples == 0:
             return 0
-        return sum([entry.value for entry in history]) / float(num_samples)
+        # Use generator expression instead of list comprehension
+        return sum(entry.value for entry in history) / float(num_samples)
 
     def timespan(self):
         return self._history[0].timestamp, self._history[-1].timestamp
@@ -63,7 +66,8 @@ class History:
 
     def total(self, sample_over=None):
         history = self.history(sample_over)
-        return sum([entry.value for entry in history])
+        # Use generator expression instead of list comprehension
+        return sum(entry.value for entry in history)
 
     def latest(self):
         return self._history[-1]
@@ -107,8 +111,9 @@ class WindSpeedHistory(History):
     def gust(self, seconds=3.0):
         """Wind gust in meters/second."""
         cut_off_time = time.time() - seconds
-        samples = [entry.value for entry in self.history() if entry.timestamp >= cut_off_time]
-        return max(samples)
+        # Use generator expression and handle empty case
+        samples = (entry.value for entry in self._history if entry.timestamp >= cut_off_time)
+        return max(samples, default=0)
 
 
 class WindDirectionHistory(History):
