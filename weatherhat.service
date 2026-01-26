@@ -1,6 +1,6 @@
 [Unit]
 Description=Weather HAT MQTT Publisher (Improved)
-Documentation=https://github.com/pimoroni/weatherhat-python
+Documentation=https://github.com/pimoroni/weather-station
 After=network-online.target time-sync.target
 Wants=network-online.target time-sync.target
 
@@ -13,11 +13,11 @@ User=weather
 Group=weather
 
 # Working directory
-WorkingDirectory=/home/weather/weatherhat-python/bin
+WorkingDirectory=/home/weather/weather-station/bin
 
 # Load environment configuration from file
 # Create this file from mqtt.env.example
-EnvironmentFile=/home/weather/weatherhat-python/config/mqtt.env
+EnvironmentFile=/home/weather/weather-station/config/mqtt.env
 
 # Environment setup - use virtual environment's Python directly
 Environment="PATH=/home/weather/.virtualenvs/pimoroni/bin:/usr/local/bin:/usr/bin:/bin"
@@ -27,7 +27,7 @@ Environment="VIRTUAL_ENV=/home/weather/.virtualenvs/pimoroni"
 ExecStartPre=/bin/sleep 15
 
 # Run the improved MQTT publisher script with structured logging
-ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weatherhat-python/bin/mqtt-publisher.py
+ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weather-station/bin/mqtt-publisher.py
 
 # Restart configuration - robust for remote deployment
 # With improved reconnection logic, failures should be rarer

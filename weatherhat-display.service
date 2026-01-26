@@ -1,6 +1,6 @@
 [Unit]
 Description=Weather HAT Display (Power Saving)
-Documentation=https://github.com/pimoroni/weatherhat-python
+Documentation=https://github.com/pimoroni/weather-station
 After=weatherhat.service
 # Optional: start after main weather service
 
@@ -10,7 +10,7 @@ User=weather
 Group=weather
 
 # Working directory
-WorkingDirectory=/home/weather/weatherhat-python/bin
+WorkingDirectory=/home/weather/weather-station/bin
 
 # Environment setup
 Environment="PATH=/home/weather/.virtualenvs/pimoroni/bin:/usr/local/bin:/usr/bin:/bin"
@@ -22,7 +22,7 @@ Environment="DISPLAY_SLEEP_TIMEOUT=30"
 ExecStartPre=/bin/sleep 5
 
 # Run the display script
-ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weatherhat-python/bin/display-interface.py
+ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weather-station/bin/display-interface.py
 
 # Restart on failure
 Restart=on-failure
