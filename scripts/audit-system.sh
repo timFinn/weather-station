@@ -296,7 +296,7 @@ ls /etc/cron.weekly/ 2>/dev/null | sed 's/^/  weekly: /'
 echo ""
 info "User crontabs:"
 crontab -l 2>/dev/null && echo "" || echo "  No crontab for $(whoami)"
-sudo -u garden crontab -l 2>/dev/null && echo "" || echo "  No crontab for garden user"
+sudo -u weather crontab -l 2>/dev/null && echo "" || echo "  No crontab for weather user"
 
 echo ""
 info "Systemd timers:"

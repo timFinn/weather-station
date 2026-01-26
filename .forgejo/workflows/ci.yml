@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: registry.timfinn.dev
+  IMAGE_NAME: weatherhat
+
+jobs:
+  lint:
+    runs-on: docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install lint tools
+        run: pip install ruff codespell isort
+
+      - name: Run ruff
+        run: ruff check .
+
+      - name: Check import sorting
+        run: isort --check-only --diff .
+
+      - name: Run codespell
+        run: codespell --skip='.git,*.pyc,__pycache__,dist,build,.tox,.egg'
+
+  build-push:
+    runs-on: docker
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up multi-arch support
+        run: |
+          docker run --rm --privileged tonistiigi/binfmt --install all
+          docker buildx create --use --name multiarch
+          docker buildx inspect --bootstrap
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build and push multi-arch image
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --file Containerfile \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }} \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            --push \
+            .
+
+      - name: Summary
+        run: |
+          echo "## Published Images" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY

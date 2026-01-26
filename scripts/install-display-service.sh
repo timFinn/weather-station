@@ -46,7 +46,7 @@ check_fonts() {
     info "Checking font dependencies..."
 
     SERVICE_USER=$(grep "^User=" "$SOURCE_SERVICE" 2>/dev/null | cut -d= -f2 | tr -d ' ')
-    SERVICE_USER=${SERVICE_USER:-garden}
+    SERVICE_USER=${SERVICE_USER:-weather}
 
     VENV_PATH="/home/$SERVICE_USER/.virtualenvs/pimoroni"
 

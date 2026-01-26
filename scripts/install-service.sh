@@ -109,7 +109,7 @@ remove_cron() {
 
     # Detect the user from the service file
     SERVICE_USER=$(grep "^User=" "$SOURCE_SERVICE" 2>/dev/null | cut -d= -f2 | tr -d ' ')
-    SERVICE_USER=${SERVICE_USER:-garden}
+    SERVICE_USER=${SERVICE_USER:-weather}
 
     # Check user's crontab
     if sudo -u "$SERVICE_USER" crontab -l 2>/dev/null | grep -q "mqtt.py\|weatherhat"; then
