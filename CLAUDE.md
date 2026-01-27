@@ -70,10 +70,11 @@ Configured in `pyproject.toml`:
 
 ### Directory Structure
 - `bin/` - Production executables (mqtt-publisher.py, display-interface.py)
-- `weatherhat/` - Core library (sensor driver, history classes)
-- `config/` - Environment configuration templates
-- `scripts/` - Installation and setup scripts
+- `config/` - Environment configuration (mqtt.env)
+- `docs/` - Documentation (SETUP.md, MQTT.md, DISPLAY.md, CONTAINER.md)
 - `examples/` - Reference examples and demos
+- `scripts/` - Installation scripts
+- `weatherhat/` - Core sensor library
 - `.forgejo/workflows/` - CI/CD workflows
 - `Containerfile` - Container build for Podman deployment
 
