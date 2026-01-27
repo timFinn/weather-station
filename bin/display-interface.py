@@ -9,7 +9,6 @@ Features:
 - Auto-sleep after inactivity
 - Runs alongside MQTT publisher
 """
-import math
 import os
 import select
 import time

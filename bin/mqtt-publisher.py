@@ -10,8 +10,7 @@ import sys
 import json
 import logging
 import signal
-from time import sleep, time
-from pathlib import Path
+from time import sleep
 
 import weatherhat
 from gpiozero import CPUTemperature
