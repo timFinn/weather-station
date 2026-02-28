@@ -82,7 +82,7 @@ def signal_handler(sig, frame):
 def on_connect(client, userdata, flags, rc):
     """Callback when MQTT connection is established"""
     if rc == 0:
-        logger.info(f"Connected to MQTT broker at {MQTT_SERVER}:{MQTT_PORT}")
+        logger.info(f"Connected to MQTT broker at {MQTT_SERVER}:{MQTT_PORT} (client_id={MQTT_CLIENT_ID})")
     else:
         error_messages = {
             1: "Incorrect protocol version",
@@ -270,17 +270,10 @@ def main():
             sleep(PUBLISH_INTERVAL)
 
         else:
-            # Connection lost - attempt reconnect with exponential backoff
-            logger.warning(f"MQTT disconnected. Retrying in {reconnect_delay}s...")
+            # Connection lost - paho's network loop (loop_start) handles
+            # reconnection automatically. Just wait and log.
+            logger.warning(f"MQTT disconnected. Waiting {reconnect_delay}s for reconnection...")
             sleep(reconnect_delay)
-
-            try:
-                mqtt_client.reconnect()
-                logger.info("Reconnect initiated, waiting for broker handshake...")
-            except Exception as e:
-                logger.error(f"Reconnect failed: {e}")
-
-            # Exponential backoff with max limit
             reconnect_delay = min(reconnect_delay * 2, MAX_RECONNECT_DELAY)
 
     # Cleanup
