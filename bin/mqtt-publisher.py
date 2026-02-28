@@ -8,6 +8,7 @@ Configure via environment variables or config file.
 import json
 import logging
 import os
+import platform
 import signal
 import sys
 from time import sleep
@@ -29,7 +30,7 @@ MQTT_SERVER = os.getenv("MQTT_SERVER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")  # Optional
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")  # Optional
-MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "weatherhat")
+MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", f"weatherhat-{platform.node()}")
 MQTT_TOPIC_PREFIX = os.getenv("MQTT_TOPIC_PREFIX", "sensors")
 
 # Sensor configuration
