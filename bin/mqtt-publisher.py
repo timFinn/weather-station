@@ -81,10 +81,8 @@ def signal_handler(sig, frame):
 
 def on_connect(client, userdata, flags, rc):
     """Callback when MQTT connection is established"""
-    global reconnect_delay
     if rc == 0:
         logger.info(f"Connected to MQTT broker at {MQTT_SERVER}:{MQTT_PORT}")
-        reconnect_delay = INITIAL_RECONNECT_DELAY  # Reset backoff on successful connect
     else:
         error_messages = {
             1: "Incorrect protocol version",
