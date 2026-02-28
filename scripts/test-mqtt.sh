@@ -68,12 +68,11 @@ TESTS_FAILED=0
 # Test 1: DNS resolution
 echo "------------------------------------------"
 info "Test 1: DNS resolution for $MQTT_SERVER"
-if host "$MQTT_SERVER" &>/dev/null; then
-    RESOLVED_IP=$(host "$MQTT_SERVER" 2>/dev/null | head -1)
-    pass "DNS resolved: $RESOLVED_IP"
-    TESTS_PASSED=$((TESTS_PASSED + 1))
-elif [[ "$MQTT_SERVER" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+if [[ "$MQTT_SERVER" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     pass "Using IP address directly"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+elif RESOLVED_IP=$(getent hosts "$MQTT_SERVER" 2>/dev/null | awk '{print $1}'); [ -n "$RESOLVED_IP" ]; then
+    pass "DNS resolved: $MQTT_SERVER -> $RESOLVED_IP"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     fail "Cannot resolve $MQTT_SERVER"
