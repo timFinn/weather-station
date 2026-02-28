@@ -35,11 +35,20 @@ The installer creates a `weather` service user, sets up the Python environment, 
 # Check service status
 sudo systemctl status weatherhat
 
+# Run MQTT diagnostics
+sudo ./scripts/test-mqtt.sh
+
 # View logs
 sudo journalctl -u weatherhat -f
 
 # Subscribe to MQTT topics (from another machine)
 mosquitto_sub -h YOUR_MQTT_SERVER -t 'sensors/#' -v
+```
+
+### Update
+
+```bash
+sudo ./scripts/update.sh
 ```
 
 ## Documentation
@@ -62,7 +71,7 @@ weather-station/
 │   ├── mqtt.env.example    # Template
 │   └── mqtt.env            # Your settings (create this)
 ├── weatherhat/             # Sensor library
-├── scripts/                # Installation scripts
+├── scripts/                # Installation, update, and diagnostic scripts
 ├── docs/                   # Documentation
 ├── examples/               # Example scripts
 ├── Containerfile           # Container build

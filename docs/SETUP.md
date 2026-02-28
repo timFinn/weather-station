@@ -96,8 +96,8 @@ MQTT_PORT=1883
 MQTT_USERNAME=your_username
 MQTT_PASSWORD=your_password
 
-# Client Settings
-MQTT_CLIENT_ID=weatherhat
+# Client Settings (client ID must be unique across all MQTT clients)
+MQTT_CLIENT_ID=weatherhat-pi
 MQTT_TOPIC_PREFIX=sensors
 
 # Sensor Settings
@@ -150,6 +150,21 @@ For debugging, run the publisher directly:
 sudo -u weather /home/weather/.virtualenvs/pimoroni/bin/python \
   /home/weather/weather-station/bin/mqtt-publisher.py
 ```
+
+## Updating
+
+Pull the latest code and restart the service:
+
+```bash
+sudo ./scripts/update.sh
+```
+
+This will:
+1. Pull latest changes from git
+2. Sync files to the deployment directory (preserving `config/mqtt.env`)
+3. Update pip dependencies if `requirements.txt` changed
+4. Reload the systemd unit file if it changed
+5. Restart the service
 
 ## Display Service (Optional)
 
@@ -214,6 +229,9 @@ sudo reboot
 ### MQTT Connection Fails
 
 ```bash
+# Run the diagnostic script
+sudo ./scripts/test-mqtt.sh
+
 # Test broker connectivity
 ping YOUR_MQTT_SERVER
 
@@ -223,6 +241,10 @@ mosquitto_pub -h YOUR_MQTT_SERVER -p 1883 -t test -m "hello"
 # Check credentials in config
 sudo cat /home/weather/weather-station/config/mqtt.env | grep MQTT
 ```
+
+### MQTT Reconnect Loop
+
+If logs show repeated connect/disconnect cycles, the client ID is likely in use by another MQTT client (e.g. Telegraf). Set a unique `MQTT_CLIENT_ID` in `config/mqtt.env` and restart the service.
 
 ### GPIO Busy Errors
 
@@ -260,7 +282,9 @@ sudo journalctl -u weatherhat -n 100 | grep -i error
 ├── weatherhat/                # Core sensor library
 ├── scripts/
 │   ├── install-service.sh     # Main installer
-│   └── install-display-service.sh
+│   ├── install-display-service.sh
+│   ├── update.sh              # Pull latest and restart service
+│   └── test-mqtt.sh           # MQTT diagnostic tests
 ├── weatherhat.service         # Systemd service definition
 └── weatherhat-display.service # Display service definition
 

@@ -5,7 +5,7 @@ The MQTT publisher reads sensor data from the Weather HAT and publishes it to an
 ## Features
 
 - **Environment-based configuration** - No hardcoded credentials
-- **Exponential backoff reconnection** - Smart recovery (1s to 5min max)
+- **Automatic reconnection** - Paho network loop handles recovery with exponential backoff (1s to 5min max)
 - **Graceful shutdown** - Handles SIGINT/SIGTERM properly
 - **QoS 1 publishing** - Ensures message delivery
 - **Structured logging** - Easy debugging via journald
@@ -49,7 +49,7 @@ All settings are configured via environment variables in `config/mqtt.env`:
 | `MQTT_PORT` | `1883` | MQTT broker port |
 | `MQTT_USERNAME` | _(empty)_ | MQTT username (optional) |
 | `MQTT_PASSWORD` | _(empty)_ | MQTT password (optional) |
-| `MQTT_CLIENT_ID` | `weatherhat` | Unique client identifier |
+| `MQTT_CLIENT_ID` | `weatherhat-{hostname}` | Unique client identifier |
 | `MQTT_TOPIC_PREFIX` | `sensors` | Topic prefix for all messages |
 | `TEMP_OFFSET` | `-7.5` | Temperature compensation offset (°C) |
 | `UPDATE_INTERVAL` | `2.0` | Sensor update interval (seconds) |
@@ -146,6 +146,14 @@ mqtt:
 
 ## Troubleshooting
 
+### Run Diagnostics
+
+The diagnostic script tests connectivity, authentication, client ID conflicts, round-trip publishing, and data flow:
+
+```bash
+sudo ./scripts/test-mqtt.sh
+```
+
 ### Connection Issues
 
 ```bash
@@ -156,7 +164,21 @@ sudo journalctl -u weatherhat -n 50
 mosquitto_pub -h YOUR_MQTT_SERVER -p 1883 -t test -m "hello"
 
 # Verify credentials
-cat /home/weather/weather-station/config/mqtt.env | grep MQTT
+sudo cat /home/weather/weather-station/config/mqtt.env | grep MQTT
+```
+
+### Client ID Conflicts
+
+If the service connects then immediately disconnects in a loop, another MQTT client (e.g. Telegraf) may be using the same client ID. The broker only allows one connection per client ID — duplicates cause both clients to fight over the connection.
+
+```bash
+# Check for conflicts (holds the configured client ID for 5s)
+sudo ./scripts/test-mqtt.sh  # See Test 4 output
+
+# Fix by setting a unique client ID
+sudo nano /home/weather/weather-station/config/mqtt.env
+# Change MQTT_CLIENT_ID to something unique, e.g. weatherhat-pi
+sudo systemctl restart weatherhat
 ```
 
 ### Sensor Errors
