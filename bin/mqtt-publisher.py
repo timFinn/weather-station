@@ -10,6 +10,7 @@ import logging
 import os
 import platform
 import signal
+import subprocess
 import sys
 from time import sleep
 
@@ -55,6 +56,9 @@ TOPICS = {
     'wind_speed': f"{MQTT_TOPIC_PREFIX}/weather/wind_speed",
     'rain': f"{MQTT_TOPIC_PREFIX}/weather/rain",
     'rain_total': f"{MQTT_TOPIC_PREFIX}/weather/rain_total",
+    'throttled': f"{MQTT_TOPIC_PREFIX}/pi/throttled",
+    'undervoltage': f"{MQTT_TOPIC_PREFIX}/pi/undervoltage",
+    'undervoltage_now': f"{MQTT_TOPIC_PREFIX}/pi/undervoltage_now",
 }
 
 # Sensor error threshold - exit after this many consecutive I2C failures
@@ -151,6 +155,33 @@ def send_payload(client, topic, data):
         logger.error(f"Unexpected error publishing to {topic}: {e}")
         return False
 
+def get_throttle_status():
+    """Read Pi throttle status from vcgencmd.
+
+    Returns a dict with:
+        throttled: raw hex value (int)
+        undervoltage: True if undervoltage has occurred since boot
+        undervoltage_now: True if undervoltage is happening right now
+    """
+    try:
+        result = subprocess.run(["vcgencmd", "get_throttled"], capture_output=True, text=True, timeout=5)
+        # Output format: "throttled=0x50000"
+        value = int(result.stdout.strip().split("=")[1], 16)
+        status = {
+            "throttled": value,
+            "undervoltage": bool(value & (1 << 16)),
+            "undervoltage_now": bool(value & (1 << 0)),
+        }
+        if status["undervoltage_now"]:
+            logger.warning(f"Undervoltage detected NOW (throttled=0x{value:x})")
+        elif status["undervoltage"]:
+            logger.warning(f"Undervoltage has occurred since boot (throttled=0x{value:x})")
+        return status
+    except Exception as e:
+        logger.debug(f"Failed to read throttle status: {e}")
+        return None
+
+
 def initialize_sensors():
     """Initialize weather sensor and CPU temperature monitor"""
     global sensor, cpu
@@ -233,6 +264,13 @@ def read_and_publish_data():
         finally:
             signal.alarm(0)
             signal.signal(signal.SIGALRM, old_handler)
+
+        # Add throttle status (separate from I2C timeout — this calls vcgencmd)
+        throttle = get_throttle_status()
+        if throttle:
+            sensor_data['throttled'] = throttle['throttled']
+            sensor_data['undervoltage'] = throttle['undervoltage']
+            sensor_data['undervoltage_now'] = throttle['undervoltage_now']
 
         # Publish all readings
         success_count = 0
