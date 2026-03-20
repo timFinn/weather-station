@@ -33,6 +33,7 @@ ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weather-s
 # With improved reconnection logic, failures should be rarer
 Restart=on-failure
 RestartSec=30
+TimeoutStopSec=15
 StartLimitBurst=5
 StartLimitIntervalSec=300
 

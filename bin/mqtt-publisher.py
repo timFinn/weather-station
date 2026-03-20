@@ -287,7 +287,7 @@ def read_and_publish_data():
         logger.error(f"I2C/Sensor error ({consecutive_sensor_errors}/{MAX_CONSECUTIVE_SENSOR_ERRORS}): {e}")
         if consecutive_sensor_errors >= MAX_CONSECUTIVE_SENSOR_ERRORS:
             logger.critical(f"I2C bus failure: {consecutive_sensor_errors} consecutive errors, exiting for systemd restart")
-            sys.exit(1)
+            os._exit(1)
         return False
     except Exception as e:
         logger.error(f"Error reading sensors: {e}", exc_info=True)
@@ -346,7 +346,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+        os._exit(0)
     except Exception as e:
         logger.critical(f"Fatal error: {e}", exc_info=True)
-        sys.exit(1)
+        os._exit(1)
 
