@@ -30,12 +30,14 @@ ExecStartPre=/bin/sleep 15
 ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weather-station/bin/mqtt-publisher.py
 
 # Restart configuration - robust for remote deployment
-# With improved reconnection logic, failures should be rarer
+# Generous limits: transient I2C/hardware glitches can cause several
+# rapid restarts. 10 restarts per hour prevents permanent death while
+# still catching genuine boot loops.
 Restart=on-failure
-RestartSec=30
+RestartSec=60
 TimeoutStopSec=15
-StartLimitBurst=5
-StartLimitIntervalSec=300
+StartLimitBurst=10
+StartLimitIntervalSec=3600
 
 # Resource limits - improved version uses less CPU
 MemoryMax=128M

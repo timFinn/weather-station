@@ -12,7 +12,7 @@ import platform
 import signal
 import subprocess
 import sys
-from time import sleep
+from time import monotonic, sleep
 
 import paho.mqtt.client as mqtt
 from gpiozero import CPUTemperature
@@ -60,6 +60,7 @@ TOPICS = {
     'throttled': f"{MQTT_TOPIC_PREFIX}/pi/throttled",
     'undervoltage': f"{MQTT_TOPIC_PREFIX}/pi/undervoltage",
     'undervoltage_now': f"{MQTT_TOPIC_PREFIX}/pi/undervoltage_now",
+    'status': f"{MQTT_TOPIC_PREFIX}/weather/status",
 }
 
 # Sensor error threshold - exit after this many consecutive I2C failures
@@ -89,6 +90,8 @@ mqtt_client = None
 running = True
 reconnect_delay = INITIAL_RECONNECT_DELAY
 consecutive_sensor_errors = 0
+last_successful_publish = monotonic()
+service_start_time = monotonic()
 
 
 #  Function Definitions
@@ -104,6 +107,8 @@ def on_connect(client, userdata, flags, rc):
     """Callback when MQTT connection is established"""
     if rc == 0:
         logger.info(f"Connected to MQTT broker at {MQTT_SERVER}:{MQTT_PORT} (client_id={MQTT_CLIENT_ID})")
+        # Publish online status (retained so new subscribers see current state)
+        client.publish(TOPICS['status'], payload="online", qos=1, retain=True)
     else:
         error_messages = {
             1: "Incorrect protocol version",
@@ -159,6 +164,58 @@ def send_payload(client, topic, data):
         logger.error(f"Unexpected error publishing to {topic}: {e}")
         return False
 
+def scan_i2c_devices():
+    """Quick I2C bus scan to see which devices are responding."""
+    try:
+        result = subprocess.run(["i2cdetect", "-y", "1"], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return f"i2cdetect failed (exit {result.returncode}): {result.stderr.strip()}"
+    except FileNotFoundError:
+        return "i2cdetect not installed"
+    except subprocess.TimeoutExpired:
+        return "i2cdetect timed out (bus may be hung)"
+    except Exception as e:
+        return f"i2cdetect error: {e}"
+
+
+def log_sensor_diagnostics(error, error_count):
+    """Log detailed system state when sensor errors occur.
+
+    Captures throttle status, I2C bus state, and timing info to help
+    diagnose intermittent failures after the fact.
+    """
+    now = monotonic()
+    uptime = now - service_start_time
+    time_since_success = now - last_successful_publish
+
+    logger.warning(
+        f"--- Sensor error diagnostics (error {error_count}/{MAX_CONSECUTIVE_SENSOR_ERRORS}) ---"
+    )
+    logger.warning(f"  Error type: {type(error).__name__}: {error}")
+    logger.warning(f"  Service uptime: {uptime:.0f}s, time since last successful publish: {time_since_success:.0f}s")
+
+    # Check power state — undervoltage is a common cause of I2C failures
+    throttle = get_throttle_status()
+    if throttle:
+        if throttle["undervoltage_now"]:
+            logger.warning(f"  Power: UNDERVOLTAGE NOW (throttled=0x{throttle['throttled']:x})")
+        elif throttle["undervoltage"]:
+            logger.warning(f"  Power: undervoltage since boot (throttled=0x{throttle['throttled']:x})")
+        else:
+            logger.warning(f"  Power: OK (throttled=0x{throttle['throttled']:x})")
+    else:
+        logger.warning("  Power: unable to read throttle status")
+
+    # Scan I2C bus on first error and at recovery threshold to see what's responding
+    if error_count == 1 or error_count == I2C_RECOVERY_THRESHOLD:
+        logger.warning("  I2C bus scan:")
+        for line in scan_i2c_devices().splitlines():
+            logger.warning(f"    {line}")
+
+    logger.warning("--- End diagnostics ---")
+
+
 def get_throttle_status():
     """Read Pi throttle status from vcgencmd.
 
@@ -187,8 +244,16 @@ def get_throttle_status():
 
 
 def initialize_sensors():
-    """Initialize weather sensor and CPU temperature monitor"""
+    """Initialize weather sensor and CPU temperature monitor.
+
+    Protected by SIGALRM timeout so a hung I2C bus during startup
+    doesn't leave the process stuck forever (systemd Type=simple
+    considers it running as soon as the process starts).
+    """
     global sensor, cpu
+    init_timeout = SENSOR_READ_TIMEOUT + 15  # extra margin for warmup sleep
+    old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.alarm(init_timeout)
     try:
         logger.info("Initializing WeatherHAT sensor...")
         sensor = weatherhat.WeatherHAT()
@@ -203,9 +268,15 @@ def initialize_sensors():
         sleep(10.0)
         logger.info("Sensors initialized successfully")
         return True
+    except SensorTimeout:
+        logger.error(f"Sensor initialization timed out after {init_timeout}s (I2C bus may be hung)")
+        return False
     except Exception as e:
         logger.error(f"Failed to initialize sensors: {e}")
         return False
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def reinitialize_sensors():
@@ -241,6 +312,9 @@ def initialize_mqtt():
             logger.info("Using MQTT authentication")
             mqtt_client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
 
+        # Set Last Will — broker publishes this if we disconnect unexpectedly
+        mqtt_client.will_set(TOPICS['status'], payload="offline", qos=1, retain=True)
+
         # Register callbacks
         mqtt_client.on_connect = on_connect
         mqtt_client.on_disconnect = on_disconnect
@@ -260,7 +334,7 @@ def initialize_mqtt():
 
 def read_and_publish_data():
     """Read all sensor data and publish to MQTT"""
-    global consecutive_sensor_errors
+    global consecutive_sensor_errors, last_successful_publish
     try:
         # Set a timeout so a hung I2C bus doesn't block forever
         old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
@@ -304,12 +378,16 @@ def read_and_publish_data():
                 success_count += 1
 
         logger.debug(f"Published {success_count}/{len(sensor_data)} sensor readings")
+        if consecutive_sensor_errors > 0:
+            logger.info(f"Sensor reads recovered after {consecutive_sensor_errors} consecutive error(s)")
         consecutive_sensor_errors = 0
+        last_successful_publish = monotonic()
         return True
 
-    except (OSError, SensorTimeout) as e:
+    except (OSError, RuntimeError, SensorTimeout) as e:
         consecutive_sensor_errors += 1
         logger.error(f"I2C/Sensor error ({consecutive_sensor_errors}/{MAX_CONSECUTIVE_SENSOR_ERRORS}): {e}")
+        log_sensor_diagnostics(e, consecutive_sensor_errors)
 
         # Attempt I2C bus recovery before giving up
         if consecutive_sensor_errors == I2C_RECOVERY_THRESHOLD:
@@ -323,7 +401,11 @@ def read_and_publish_data():
                     logger.error("Sensors failed to reinitialize after bus recovery")
 
         if consecutive_sensor_errors >= MAX_CONSECUTIVE_SENSOR_ERRORS:
-            logger.critical(f"I2C bus failure: {consecutive_sensor_errors} consecutive errors, exiting for systemd restart")
+            time_since_success = monotonic() - last_successful_publish
+            logger.critical(
+                f"I2C bus failure: {consecutive_sensor_errors} consecutive errors over {time_since_success:.0f}s, "
+                f"exiting for systemd restart (uptime: {monotonic() - service_start_time:.0f}s)"
+            )
             os._exit(1)
         return False
     except Exception as e:
@@ -375,6 +457,7 @@ def main():
     # Cleanup
     logger.info("Shutting down...")
     if mqtt_client:
+        mqtt_client.publish(TOPICS['status'], payload="offline", qos=1, retain=True)
         mqtt_client.loop_stop()
         mqtt_client.disconnect()
     logger.info("Shutdown complete")
