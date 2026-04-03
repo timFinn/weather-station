@@ -9,6 +9,10 @@ The MQTT publisher reads sensor data from the Weather HAT and publishes it to an
 - **Graceful shutdown** - Handles SIGINT/SIGTERM properly
 - **QoS 1 publishing** - Ensures message delivery
 - **Structured logging** - Easy debugging via journald
+- **LWT status topic** - Broker publishes offline status on unexpected disconnect
+- **Sensor error diagnostics** - Logs power state, I2C bus scan, and timing on failures
+- **I2C bus recovery** - Automatic recovery via pinctrl bit-bang + driver rebind
+- **Initialization timeout** - Prevents hung startup on stuck I2C bus
 
 ## MQTT Topics
 
@@ -26,6 +30,10 @@ sensors/weather/wind_direction   - Wind direction (cardinal)
 sensors/weather/wind_speed       - Wind speed (m/s)
 sensors/weather/rain             - Rain rate (mm/s)
 sensors/weather/rain_total       - Total rain in interval (mm)
+sensors/pi/throttled             - Pi throttle status (raw hex int)
+sensors/pi/undervoltage          - Undervoltage since boot (bool)
+sensors/pi/undervoltage_now      - Undervoltage right now (bool)
+sensors/weather/status           - Online/offline (retained, set via LWT)
 ```
 
 ## Payload Format
@@ -183,17 +191,30 @@ sudo systemctl restart weatherhat
 
 ### Sensor Errors
 
+The publisher logs detailed diagnostics on sensor failures, including power state (undervoltage), I2C bus scan, service uptime, and time since last successful publish. Check the journal for `--- Sensor error diagnostics ---` blocks.
+
+The error recovery sequence is:
+1. **1-2 consecutive errors**: Log diagnostics, retry
+2. **3 consecutive errors**: Attempt I2C bus recovery (pinctrl bit-bang + driver rebind), reinitialize sensors
+3. **5 consecutive errors**: Exit for systemd restart
+
 ```bash
 # Check I2C devices
 i2cdetect -y 1
 
 # Verify user permissions
 groups weather  # Should include: i2c gpio spi
+
+# Check for undervoltage (common cause of I2C failures)
+vcgencmd get_throttled
 ```
 
 ### No Data Publishing
 
 ```bash
+# Check service status topic (retained — shows last known state)
+mosquitto_sub -h YOUR_MQTT_SERVER -t 'sensors/weather/status' -C 1
+
 # Run manually to see errors
 sudo -u weather /home/weather/.virtualenvs/pimoroni/bin/python \
   /home/weather/weather-station/bin/mqtt-publisher.py

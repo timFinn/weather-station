@@ -213,12 +213,20 @@ sudo -u weather /home/weather/.virtualenvs/pimoroni/bin/python \
 
 ### I2C/Sensor Errors
 
+The publisher automatically attempts I2C bus recovery after 3 consecutive errors and exits for systemd restart after 5. Diagnostic info (power state, I2C bus scan, timing) is logged on each failure — look for `--- Sensor error diagnostics ---` in the journal.
+
 ```bash
 # Check I2C is enabled
 i2cdetect -y 1
 
 # Check user has permissions
 groups weather  # Should include: i2c gpio spi
+
+# Check for undervoltage (common cause of I2C failures)
+vcgencmd get_throttled
+
+# Manual I2C bus recovery
+sudo /home/weather/weather-station/scripts/i2c-bus-recovery.sh
 
 # Re-enable interfaces if needed
 sudo raspi-config nonint do_i2c 0
@@ -284,7 +292,9 @@ sudo journalctl -u weatherhat -n 100 | grep -i error
 │   ├── install-service.sh     # Main installer
 │   ├── install-display-service.sh
 │   ├── update.sh              # Pull latest and restart service
-│   └── test-mqtt.sh           # MQTT diagnostic tests
+│   ├── test-mqtt.sh           # MQTT diagnostic tests
+│   ├── i2c-bus-recovery.sh    # I2C bus recovery via pinctrl
+│   └── audit-system.sh        # System optimization checks
 ├── weatherhat.service         # Systemd service definition
 └── weatherhat-display.service # Display service definition
 

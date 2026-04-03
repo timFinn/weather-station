@@ -104,7 +104,10 @@ Configured in `pyproject.toml`:
 - Reads sensors via WeatherHAT class
 - Publishes to MQTT broker with QoS 1
 - Automatic reconnection via paho network loop with exponential backoff (1s → 5min max)
-- Exits on persistent I2C failure to allow systemd restart
+- I2C error recovery: catches OSError, RuntimeError, SensorTimeout → attempts bus recovery at 3 errors, exits at 5 for systemd restart
+- Diagnostic logging on sensor errors: power/throttle state, I2C bus scan, uptime and timing
+- SIGALRM timeout on sensor reads and initialization to prevent hangs
+- LWT (Last Will and Testament) for online/offline status on `sensors/weather/status`
 - Graceful shutdown handling (SIGINT/SIGTERM)
 - Configured via environment variables
 
@@ -116,7 +119,12 @@ Configured in `pyproject.toml`:
 ### Data Flow
 ```
 Hardware Sensors → WeatherHAT class → MQTT Publisher → MQTT Broker → Remote consumers
-                                   ↘ Display Interface (local visualization)
+                                   ↘ Display Interface    ↓              ↓
+                                     (local visualization) Telegraf    LWT status
+                                                           ↓
+                                                        InfluxDB (bucket: "weather")
+                                                           ↓
+                                                        Grafana → Discord alerts
 ```
 
 ### Threading Model
