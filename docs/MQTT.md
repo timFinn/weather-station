@@ -62,6 +62,7 @@ All settings are configured via environment variables in `config/mqtt.env`:
 | `TEMP_OFFSET` | `-7.5` | Temperature compensation offset (°C) |
 | `UPDATE_INTERVAL` | `2.0` | Sensor update interval (seconds) |
 | `PUBLISH_INTERVAL` | `5.0` | MQTT publish interval (seconds) |
+| `HA_DISCOVERY` | `true` | Enable Home Assistant MQTT Discovery |
 
 ### Example Configuration
 
@@ -150,6 +151,37 @@ mqtt:
       state_topic: "sensors/weather/humidity"
       value_template: "{{ value_json.value }}"
       unit_of_measurement: "%"
+```
+
+## Home Assistant Discovery
+
+When `HA_DISCOVERY` is enabled (the default), the publisher sends [MQTT Discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery) config messages on every connect. Home Assistant automatically creates sensor entities — no manual `configuration.yaml` needed.
+
+### Discovered Entities
+
+Two devices are created in Home Assistant:
+
+**Weather Station** (Pimoroni Weather HAT):
+- Temperature, Humidity, Relative Humidity, Pressure, Dew Point
+- Light, Wind Speed, Wind Direction
+- Rain Rate, Rain Total
+
+**Weather Station Pi** (Raspberry Pi):
+- CPU Temperature, Throttle Status
+- Undervoltage, Undervoltage Now
+
+All entities include availability tracking via the `sensors/weather/status` LWT topic.
+
+### Disabling Discovery
+
+Set `HA_DISCOVERY=false` in `config/mqtt.env` and restart the service. Existing entities in HA will become unavailable but won't be automatically removed.
+
+### Validating Discovery
+
+Use the test harness to verify discovery payloads without a Home Assistant installation:
+
+```bash
+python3 scripts/test-ha-discovery.py --host YOUR_MQTT_SERVER --timeout 30
 ```
 
 ## Troubleshooting

@@ -18,6 +18,7 @@ import paho.mqtt.client as mqtt
 from gpiozero import CPUTemperature
 
 import weatherhat
+from weatherhat.ha_discovery import publish_discovery_configs
 from weatherhat.i2c_recovery import attempt_i2c_recovery
 
 # Configure logging
@@ -34,6 +35,9 @@ MQTT_USERNAME = os.getenv("MQTT_USERNAME")  # Optional
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")  # Optional
 MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", f"weatherhat-{platform.node()}")
 MQTT_TOPIC_PREFIX = os.getenv("MQTT_TOPIC_PREFIX", "sensors")
+
+# Home Assistant MQTT Discovery (default: enabled, set HA_DISCOVERY=false to disable)
+HA_DISCOVERY = os.getenv("HA_DISCOVERY", "true").lower() != "false"
 
 # Sensor configuration
 TEMP_OFFSET = float(os.getenv("TEMP_OFFSET", "-7.5"))
@@ -109,6 +113,8 @@ def on_connect(client, userdata, flags, rc):
         logger.info(f"Connected to MQTT broker at {MQTT_SERVER}:{MQTT_PORT} (client_id={MQTT_CLIENT_ID})")
         # Publish online status (retained so new subscribers see current state)
         client.publish(TOPICS['status'], payload="online", qos=1, retain=True)
+        if HA_DISCOVERY:
+            publish_discovery_configs(client, MQTT_TOPIC_PREFIX, MQTT_CLIENT_ID)
     else:
         error_messages = {
             1: "Incorrect protocol version",

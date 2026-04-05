@@ -8,6 +8,7 @@ A Python weather station for Raspberry Pi using the Pimoroni Weather HAT. Reads 
 - **Resilient Operation** - Automatic I2C bus recovery, sensor timeout protection, and graduated error handling with diagnostic logging
 - **Online/Offline Status** - MQTT Last Will and Testament (LWT) for real-time availability monitoring
 - **System Monitoring** - Publishes Pi CPU temperature, throttle state, and undervoltage detection
+- **Home Assistant Discovery** - Automatic entity creation via MQTT Discovery (opt-out with `HA_DISCOVERY=false`)
 - **LCD Display** - Shows live data and historical graphs on the Weather HAT screen
 - **Power Efficient** - Display sleeps when not in use
 - **Container Support** - Run via Podman for easy deployment
