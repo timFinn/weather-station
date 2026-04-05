@@ -31,9 +31,26 @@ jobs:
       - name: Run codespell
         run: codespell --skip='.git,*.pyc,__pycache__,dist,build,.tox,.egg'
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: pip install pytest pytest-cov
+
+      - name: Run tests with coverage
+        run: pytest --cov=weatherhat --cov-report=term-missing --cov-fail-under=80
+
   build-push:
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read

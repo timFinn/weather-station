@@ -54,10 +54,10 @@ class History:
         return self._history[0].timestamp, self._history[-1].timestamp
 
     def min(self, sample_over=None):
-        return min(self.history(sample_over))
+        return min(self.history(sample_over), key=lambda entry: entry.value)
 
     def max(self, sample_over=None):
-        return max(self.history(sample_over))
+        return max(self.history(sample_over), key=lambda entry: entry.value)
 
     def median(self, sample_over=None):
         history = self.history(sample_over)
@@ -76,7 +76,8 @@ class History:
         if depth is None:
             return self._history
         depth = min(depth, len(self._history))
-        return self._history[-depth:]
+        # deque doesn't support slicing — convert to list for the slice
+        return list(self._history)[-depth:]
 
 
 class WindSpeedHistory(History):
