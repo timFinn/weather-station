@@ -23,6 +23,18 @@ A Python weather station for Raspberry Pi using the Pimoroni Weather HAT. Reads 
 - Pimoroni Weather HAT
 - I2C and SPI enabled (`sudo raspi-config`)
 
+> **Low-RAM Pis (Zero/Zero 2 W/3A+):** numpy is built from source during
+> install and will OOM on boards with ≤512 MB RAM. Enable swap first:
+>
+> ```bash
+> sudo dphys-swapfile swapoff
+> sudo sed -i 's/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=1024/' /etc/dphys-swapfile
+> sudo dphys-swapfile setup
+> sudo dphys-swapfile swapon
+> ```
+>
+> A Pi 4 or newer has enough RAM that this is not required.
+
 ### Install
 
 ```bash
