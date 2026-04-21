@@ -157,7 +157,9 @@ def send_payload(client, topic, data):
     try:
         # Use original format for Telegraf compatibility: {topic: value}
         payload = json.dumps({topic: data})
-        result = client.publish(topic=topic, payload=payload, qos=1, retain=False)
+        # Retain so new subscribers (e.g. the display service) get the latest
+        # value on connect instead of waiting up to PUBLISH_INTERVAL.
+        result = client.publish(topic=topic, payload=payload, qos=1, retain=True)
 
         if result.rc != mqtt.MQTT_ERR_SUCCESS:
             logger.error(f"Publish failed for {topic}: {result.rc}")

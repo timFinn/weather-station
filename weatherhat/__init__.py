@@ -122,10 +122,13 @@ class WeatherHAT:
 
     def close(self):
         """Explicitly close and cleanup resources. Prefer this over relying on __del__."""
-        if self._polling:
+        # Guard every attribute so close() is safe even if __init__ raised
+        # before assigning them (otherwise __del__ masks the real error).
+        if getattr(self, "_polling", False):
             self._polling = False
-            if self._poll_thread and self._poll_thread.is_alive():
-                self._poll_thread.join(timeout=2.0)
+            poll_thread = getattr(self, "_poll_thread", None)
+            if poll_thread and poll_thread.is_alive():
+                poll_thread.join(timeout=2.0)
 
     def __enter__(self):
         """Context manager entry."""
