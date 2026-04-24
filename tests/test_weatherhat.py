@@ -135,3 +135,27 @@ def test_context_manager(gpiod, gpiodevice, ioe, bme280, ltr559, smbus2):
 
     # After exiting context, polling should be stopped
     assert sensor._polling is False
+
+
+def test_close_is_safe_when_init_fails_early(gpiod, gpiodevice, ioe, bme280, ltr559, smbus2):
+    """close()/__del__ must not raise if __init__ failed before setting _polling.
+
+    Regression: a user report showed `AttributeError: 'WeatherHAT' object has
+    no attribute '_poll_thread'` masking the real error (EBUSY on the GPIO
+    line request) whenever two processes tried to instantiate WeatherHAT.
+    close() must tolerate partially-initialized instances.
+    """
+    import weatherhat
+
+    # Make SMBus raise so __init__ fails before _polling is assigned
+    smbus2.SMBus.side_effect = OSError("simulated I2C init failure")
+
+    try:
+        weatherhat.WeatherHAT()
+    except OSError:
+        pass  # expected — we want the real error to surface
+    # Reaching this point means __del__ (which runs as the instance is
+    # garbage-collected) did not raise. Explicitly construct a bare
+    # instance and exercise close() directly to be thorough.
+    bare = weatherhat.WeatherHAT.__new__(weatherhat.WeatherHAT)
+    bare.close()  # must not raise

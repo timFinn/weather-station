@@ -19,8 +19,11 @@ WorkingDirectory=/home/weather/weather-station/bin
 # Environment setup
 Environment="PATH=/home/weather/.virtualenvs/pimoroni/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="VIRTUAL_ENV=/home/weather/.virtualenvs/pimoroni"
-Environment="TEMP_OFFSET=-7.5"
 Environment="DISPLAY_SLEEP_TIMEOUT=30"
+
+# Load MQTT broker settings (display subscribes to sensor topics rather
+# than touching hardware — the publisher owns the GPIO lines).
+EnvironmentFile=/home/weather/weather-station/config/mqtt.env
 
 # Give hardware time to initialize
 ExecStartPre=/bin/sleep 5
