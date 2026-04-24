@@ -118,6 +118,12 @@ setup_virtualenv() {
     sudo -u "$SERVICE_USER" "$VENV_PATH/bin/pip" install --upgrade pip
     sudo -u "$SERVICE_USER" "$VENV_PATH/bin/pip" install -r "$TARGET_PROJECT/requirements.txt"
     info "Dependencies installed"
+
+    # Install local weatherhat package (contains ha_discovery, i2c_recovery, etc.
+    # that aren't in the upstream PyPI release)
+    info "Installing local weatherhat package..."
+    sudo -u "$SERVICE_USER" "$VENV_PATH/bin/pip" install --no-deps "$TARGET_PROJECT"
+    info "weatherhat package installed"
 }
 
 # Check and setup environment file

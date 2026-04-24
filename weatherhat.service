@@ -7,6 +7,11 @@ Wants=network-online.target time-sync.target
 # Optional: if using lgpiod daemon
 # After=lgpiod.service
 
+# Restart rate-limit: 10 restarts per hour prevents permanent death
+# while still absorbing transient I2C/hardware glitches.
+StartLimitBurst=10
+StartLimitIntervalSec=3600
+
 [Service]
 Type=simple
 User=weather
@@ -30,14 +35,9 @@ ExecStartPre=/bin/sleep 15
 ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weather-station/bin/mqtt-publisher.py
 
 # Restart configuration - robust for remote deployment
-# Generous limits: transient I2C/hardware glitches can cause several
-# rapid restarts. 10 restarts per hour prevents permanent death while
-# still catching genuine boot loops.
 Restart=on-failure
 RestartSec=60
 TimeoutStopSec=15
-StartLimitBurst=10
-StartLimitIntervalSec=3600
 
 # Resource limits - improved version uses less CPU
 MemoryMax=128M

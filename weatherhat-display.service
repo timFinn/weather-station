@@ -4,6 +4,10 @@ Documentation=https://github.com/pimoroni/weather-station
 After=weatherhat.service
 # Optional: start after main weather service
 
+# Restart rate-limit: stop retrying after 3 failures in 5 minutes.
+StartLimitBurst=3
+StartLimitIntervalSec=300
+
 [Service]
 Type=simple
 User=weather
@@ -27,8 +31,6 @@ ExecStart=/home/weather/.virtualenvs/pimoroni/bin/python /home/weather/weather-s
 # Restart on failure
 Restart=on-failure
 RestartSec=10
-StartLimitBurst=3
-StartLimitIntervalSec=300
 
 # Resource limits - display uses minimal resources when sleeping
 MemoryMax=128M
